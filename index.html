@@ -1,0 +1,131 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+	<head>
+		<title></title>
+		<meta charset="UTF-8">
+		<!-- Bootstrap -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+		
+		<!-- jQuery -->
+		<script src="https://code.jquery.com/jquery-2.1.1.min.js" type="text/javascript"></script>
+		
+		<!-- Underscore -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js" type="text/javascript"></script>
+		
+		<!-- Bootstrap -->
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
+		
+		<!-- AngularJS -->
+		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.27/angular.min.js" type="text/javascript"></script>
+		
+		<!-- Candlechart -->
+		<script src="candlechart.js" type="text/javascript"></script>
+		
+	</head>
+	<body ng-app="main" ng-controller="mainCtrl">
+		<div class="container">
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					Forecast
+				</div>
+				<div class="panel-body">
+					<canvas candlechart="demoData" ng-if="demoData"></canvas>
+					<div class="alert alert-info" ng-if="!demoData">
+						Loading the data... Please wait...
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<script type="text/javascript">
+			angular.module('main', []).controller('mainCtrl', function ($scope) {
+				
+				$scope.safeApply = function(fn) {
+					var phase = this.$root.$$phase;
+					if(phase == '$apply' || phase == '$digest') {
+						if(fn && (typeof(fn) === 'function')) {
+							fn();
+						}
+					} else {
+						this.$apply(fn);
+					}
+				};
+				
+				$(function() {
+					
+					$.ajax({
+						dataType:	'json',
+						url: 		'data.json',
+						success: 	function(data) {
+							$scope.safeApply(function() {
+								console.log("data",data);
+								$scope.demoData = data;
+							});
+						}
+					});
+				});
+			}).directive('candlechart', function() {
+				var component = function($scope, element, attrs) {
+					
+					// Utilities
+					$scope.safeApply = function(fn) {
+						var phase = this.$root.$$phase;
+						if(phase == '$apply' || phase == '$digest') {
+							if(fn && (typeof(fn) === 'function')) {
+								fn();
+							}
+						} else {
+							this.$apply(fn);
+						}
+					};
+					
+					/*
+					                                 _             
+					  __ _  ___ _ __   ___ _ __ __ _| |_ ___  _ __ 
+					 / _` |/ _ \ '_ \ / _ \ '__/ _` | __/ _ \| '__|
+					| (_| |  __/ | | |  __/ | | (_| | || (_) | |   
+					 \__, |\___|_| |_|\___|_|  \__,_|\__\___/|_|   
+					 |___/                                         
+					*/
+					$scope.generator = {
+						instance:	false,
+						id:			_.uniqueId('chart-'),
+						init:	function() {
+							//$scope.$watch('candlechart', function() {
+							//});
+							
+							$scope.generator.render();
+						},
+						render:	function() {
+							
+							if ($scope.generator.instance) {
+								$scope.generator.instance.destroy();
+							}
+							
+							var chart = new window.candlechart($(element).get(0), {
+								
+							});
+							
+							chart.render($scope.candlechart);
+							
+							
+							$scope.generator.instance = chart;
+							
+							
+						}
+					}
+					setTimeout(function() {
+						$scope.generator.init();
+					}, 500);
+				}
+				return {
+					link: 			component,
+					scope:			{
+						candlechart:	'='
+					}
+				};
+			});
+		</script>
+		
+	</body>
+</html>
