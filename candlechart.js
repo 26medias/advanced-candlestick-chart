@@ -17,6 +17,8 @@
 		this.buf			= new ArrayBuffer(this.imageData.data.length);
 		this.buf8			= new Uint8ClampedArray(this.buf);
 		this.data			= new Uint32Array(this.buf);
+		
+		this.counter		= 0;	// debug
 	}
 	heatmapLayer.prototype.addPoints = function(forecastPoints, x) {
 		var scope = this;
@@ -24,13 +26,14 @@
 			scope.inc(x, point);
 		});
 	}
-	heatmapLayer.prototype.inc = function(x, y) {
-		y = this.options.height - y;
+	heatmapLayer.prototype.inc = function(x, f) {
+		// f = [forecast in pixel, weight]
+		var y = this.options.height - f[0];
 		x = Math.round(x);
 		y = Math.round(y);
 		if (x<0||x>this.options.width||y<0||y>this.options.height) {return this;}
 		var index			= y * this.options.width + x;
-		this.data[index]++;
+		this.data[index] += f[1]/100;	// Increment with the weight
 		return this;
 	}
 	heatmapLayer.prototype.map = function(x,in_min,in_max,out_min,out_max) {
@@ -56,7 +59,7 @@
 	};
 	heatmapLayer.prototype.render = function(options) {
 		options = _.extend({
-			pass:	5,
+			pass:	1,
 			beta:	1.2,
 			decay:	0.5,
 			alpha:	0.5,
@@ -84,7 +87,7 @@
 		var i,j,k,px,index,weight;
 		var l = this.data.length;
 		var counter = 0;
-		for (n=0;n<options.pass;n++) {
+		//for (n=0;n<options.pass;n++) {
 			for (i=0;i<l;i++) {
 					var sum		= 0;
 					var count	= 0;
@@ -102,20 +105,20 @@
 							}
 							index	= px.y * this.options.width + px.x;
 							
-							weight	= Math.pow(options.size-Math.max(Math.abs(j),Math.abs(k)),options.beta);
+							weight	= (options.size-Math.max(Math.abs(j),Math.abs(k)))+1; //Math.pow(options.size-Math.max(Math.abs(j),Math.abs(k)),options.beta);
 							count	+= weight;
 							sum		+= this.data[index]*weight;
-							/*
+							
 							counter++;
 							if (counter<50) {
 								console.log('weight['+k+';'+j+']', weight);
 							}
-							*/
+							
 						}
 					}
 					this.data[i] = sum/count;
 			}
-		}
+		//}
 		
 		
 		
@@ -132,6 +135,8 @@
 				stats.min = this.data[i];
 			}
 		}
+		
+		console.log("stats", stats);
 		
 		// Now we convert the data to pixel values based on their range to create a heatmap
 		var rainbow = new Rainbow();
@@ -150,7 +155,7 @@
 				color			= this.toRGB(hex);
 			}
 			
-			this.data[i]	= (Math.max(options.alpha*shade, 30) << 24) | (color.b << 16) | (color.g << 8) | color.r;
+			this.data[i]	= (Math.max(options.alpha*shade, 5) << 24) | (color.b << 16) | (color.g << 8) | color.r;
 		}
 		
 		this.imageData.data.set(this.buf8);
@@ -183,7 +188,7 @@
 		
 		this.options	= _.extend({
 			display:	{
-				candlesTotal:		220,
+				candlesTotal:		400,
 				marginPct:			20,		// % of a candle width
 				marginWidth:		0,		// Will calculate after
 				legPct:				5,		// % of a candle width
@@ -409,79 +414,29 @@
 				scope.stats.min = candle.l;
 			}
 		});
-		
+		/*
 		_.each(this.data.window.forecasts, function(forecastPoints) {
-			_.each(forecastPoints, function(point) {
-				if (typeof point !== 'number') {
+			_.each(forecastPoints.f, function(point) {
+				if (point.length!==2 || typeof point[0] !== 'number') {
 					return false;
 				}
-				if (point > scope.stats.max) {
-					scope.stats.max = point;
+				if (point[0] > scope.stats.max) {
+					scope.stats.max = point[0];
 				}
-				if (point < scope.stats.min) {
-					scope.stats.min = point;
+				if (point[0] < scope.stats.min) {
+					scope.stats.min = point[0];
 				}
 			});
 		});
-		
+		*/
 		
 		return this;
 	}
 	
 	
 	candlechart.prototype.mergeLayer = function(layer) {
-		/*
-		// Create a new canvas in memory
-		var canvas		= document.createElement("canvas");
-		canvas.width	= this.width;
-		canvas.height	= this.height;
-		
-		var ctx 		= canvas.getContext('2d');
-		var imageData	= ctx.getImageData(0, 0, canvas.width, canvas.height);
-		
-		var clampedArray = new Uint8ClampedArray(layerData.buffer);
-		var data		= imageData.data;
-		data.set(clampedArray);
-		*/
-		
 		this.ctx.globalCompositeOperation = "multiply";
 		this.ctx.drawImage(layer.canvas, 0, 0);
-		
-		/*
-		var buf			= new ArrayBuffer(imageData.data.length);
-		var buf8		= new Uint8ClampedArray(buf);
-		var data		= new Uint32Array(buf);
-		*/
-		//this.imageData.data.set(this.buf8);
-		//this.ctx.putImageData(this.imageData, 0, 0);
-		
-		/*
-		var l = layerData.length;
-		var i;
-		for (i=0;i<l;i++) {
-			var int_a = this.data.pixels[i];
-			var int_b = layerData[i];
-			var pix_a = {
-				r:	int_a&0xFF,
-				g:	(int_a>>8)&0xFF,
-				b:	(int_a>>16)&0xFF,
-				a:	(int_a>>24)&0xFF
-			};
-			var pix_b = {
-				r:	int_b&0xFF,
-				g:	(int_b>>8)&0xFF,
-				b:	(int_b>>16)&0xFF,
-				a:	(int_b>>24)&0xFF
-			};
-			var pix_c = {
-				r:	(pix_a.r+pix_b.r)/2,
-				g:	(pix_a.g+pix_b.g)/2,
-				b:	(pix_a.b+pix_b.b)/2,
-				a:	(pix_a.a+pix_b.a)/2
-			};
-			this.data.pixels[i] = (pix_c.a << 24) | (pix_c.b << 16) | (pix_c.g << 8) | pix_c.r;
-		}
-		*/
 	}
 	
 	
@@ -511,6 +466,8 @@
 			scope.drawForecast(forecastPoints, pos);
 		});
 		*/
+		this.end();
+		
 		
 		// Draw the forecast
 		var heatmap	= new heatmapLayer(this.imageData.data.length, {
@@ -520,16 +477,22 @@
 			max:	this.stats.max
 		});
 		_.each(this.data.window.forecasts, function(forecastPoints, pos) {
-			heatmap.addPoints(_.map(forecastPoints, function(point) {
-				return scope.map(point, scope.stats.min, scope.stats.max, 0, scope.height)
+			heatmap.addPoints(_.map(forecastPoints.f, function(point) {
+				// Convert the forecast from $ to pixels
+				point[0] = scope.map(point[0], scope.stats.min, scope.stats.max, 0, scope.height);
+				return point;
 			}), pos * scope.options.display.candleWidthTotal + scope.options.display.candleWidthTotal/2);
 		});
+		console.info('--------------------------------------------');
+		console.info('--------------------------------------------');
+		console.info('--------------------------------------------');
+		console.info('--------------------------------------------');
+		console.info('--------------------------------------------');
+		console.info('--------------------------------------------');
 		heatmap.render(this.options.render);
-		this.end();
+		
 		
 		this.mergeLayer(heatmap);
-		
-		
 		
 		//this.fast2();
 	}

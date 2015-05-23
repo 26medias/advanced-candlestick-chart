@@ -37,8 +37,8 @@
 					Forecast
 				</div>
 				<div class="panel-body">
-					<canvas candlechart="demoData" cursor="cursor" ng-if="demoData" style="border:1px solid #000000;"></canvas>
-					<div class="alert alert-info" ng-if="!demoData">
+					<canvas candlechart="demoData" cursor="cursor" ng-if="demoData.candles&&demoData.forecasts" style="border:1px solid #000000;"></canvas>
+					<div class="alert alert-info" ng-if="!demoData.candles||!demoData.forecasts">
 						Loading the data... Please wait...
 					</div>
 				</div>
@@ -68,17 +68,28 @@
 					});
 				}
 				$scope.cursor	= 0;
-				$scope.demoData	= false;
+				$scope.demoData	= {};
 				
 				$(function() {
 					
+					// Load the candles
 					$.ajax({
 						dataType:	'json',
-						url: 		'http://localhost/api/patterns/forecast/json?cur1=EUR&cur2=USD&timeframe=1H&candles=3',
-						success: 	function(data) {
+						url: 		'data-candles.json',
+						success: 	function(candles) {
 							$scope.safeApply(function() {
-								//console.log("data",data);
-								$scope.demoData = data;
+								console.log("candles loaded");
+								$scope.demoData.candles = candles;
+							});
+						}
+					});
+					$.ajax({
+						dataType:	'json',
+						url: 		'data-forecast.json',
+						success: 	function(forecasts) {
+							$scope.safeApply(function() {
+								console.log("forecasts loaded");
+								$scope.demoData.forecasts = forecasts;
 							});
 						}
 					});
@@ -113,7 +124,10 @@
 							if (!$scope.generator.cursor) {
 								$scope.generator.cursor = 0;
 							}
-							$scope.generator.render();
+							
+							//if ($scope.candlechart && $scope.forecasts) {
+								$scope.generator.render();
+							//}
 						});
 					});
 					
@@ -130,9 +144,8 @@
 						render:	function() {
 							
 							if (!$scope.generator.instance) {
-								$scope.generator.instance = new window.candlechart($(element).get(0), {
-									
-								});
+								console.log("init and set data");
+								$scope.generator.instance = new window.candlechart($(element).get(0), {});
 								
 								$scope.generator.instance.candles($scope.candlechart.candles);
 								$scope.generator.instance.forecasts($scope.candlechart.forecasts);
@@ -142,9 +155,9 @@
 							
 						}
 					}
-					setTimeout(function() {
+					/*setTimeout(function() {
 						$scope.generator.init();
-					}, 500);
+					}, 500);*/
 				}
 				return {
 					link: 			component,
