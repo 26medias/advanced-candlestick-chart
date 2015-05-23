@@ -166,9 +166,39 @@
 	
 	
 	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	var candlechart = function(canvas, options) {
 		
-		this.options	= _.extend({},options);
+		this.options	= _.extend({
+			display:	{
+				candlesTotal:		220,
+				marginPct:			20,		// % of a candle width
+				marginWidth:		0,		// Will calculate after
+				legPct:				5,		// % of a candle width
+				legWidth:			0,		// Will calculate after
+				candleWidthTotal:	0,		// Will calculate after
+				candleWidthInner:	0,		// Will calculate after
+			},
+			render:	{
+				pass:	1,
+				alpha:	1,
+				size:	3,
+				beta:	1
+			}
+		},options);
+		
 		this.canvas		= canvas;
 		
 		this.canvas.width	= $(this.canvas).parent().width();
@@ -318,13 +348,6 @@
 	
 	
 	
-	
-	
-	
-	
-	
-	
-	
 	candlechart.prototype.candles = function(candles) {
 		this.data.candles	= candles;
 		return this;
@@ -355,17 +378,6 @@
 	
 	candlechart.prototype.computeDisplayParameters = function() {
 		// Calculate the parameters
-		this.options = _.extend(this.options, {
-			display:	{
-				candlesTotal:		220,
-				marginPct:			20,		// % of a candle width
-				marginWidth:		0,		// Will calculate after
-				legPct:				5,		// % of a candle width
-				legWidth:			0,		// Will calculate after
-				candleWidthTotal:	0,		// Will calculate after
-				candleWidthInner:	0,		// Will calculate after
-			}
-		});
 		
 		// The width in pixels of each candle (inclusing margins)
 		this.options.display.candleWidthTotal	= this.width/this.options.display.candlesTotal;
@@ -512,12 +524,7 @@
 				return scope.map(point, scope.stats.min, scope.stats.max, 0, scope.height)
 			}), pos * scope.options.display.candleWidthTotal + scope.options.display.candleWidthTotal/2);
 		});
-		heatmap.render({
-			pass:	1,
-			alpha:	1,
-			size:	3,
-			beta:	2
-		});
+		heatmap.render(this.options.render);
 		this.end();
 		
 		this.mergeLayer(heatmap);

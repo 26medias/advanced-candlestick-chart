@@ -1,7 +1,7 @@
 <!DOCTYPE HTML>
 <html lang="en-US">
 	<head>
-		<title></title>
+		<title>Probabilistic Forecast</title>
 		<meta charset="UTF-8">
 		<!-- Bootstrap -->
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
@@ -29,10 +29,15 @@
 		<div class="container">
 			<div class="panel panel-default">
 				<div class="panel-heading">
+					<div class="btn-group">
+						<div class="btn btn-default btn-xs" ng-class="{disabled:cursor==0}" ng-click="updateCursor(-1)">&laquo;</div>
+						<div class="btn btn-default btn-xs disabled">{{cursor}}</div>
+						<div class="btn btn-default btn-xs" ng-click="updateCursor(+1)">&raquo;</div>
+					</div>
 					Forecast
 				</div>
 				<div class="panel-body">
-					<canvas candlechart="demoData" ng-if="demoData" style="border:1px solid #000000;"></canvas>
+					<canvas candlechart="demoData" cursor="cursor" ng-if="demoData" style="border:1px solid #000000;"></canvas>
 					<div class="alert alert-info" ng-if="!demoData">
 						Loading the data... Please wait...
 					</div>
@@ -54,14 +59,25 @@
 					}
 				};
 				
+				$scope.updateCursor = function(n) {
+					$scope.safeApply(function() {
+						$scope.cursor+=n;
+						if ($scope.cursor<0) {
+							$scope.cursor = 0;
+						}
+					});
+				}
+				$scope.cursor	= 0;
+				$scope.demoData	= false;
+				
 				$(function() {
 					
 					$.ajax({
 						dataType:	'json',
-						url: 		'data.json',
+						url: 		'http://localhost/api/patterns/forecast/json?cur1=EUR&cur2=USD&timeframe=1H&candles=3',
 						success: 	function(data) {
 							$scope.safeApply(function() {
-								console.log("data",data);
+								//console.log("data",data);
 								$scope.demoData = data;
 							});
 						}
@@ -90,6 +106,17 @@
 					 \__, |\___|_| |_|\___|_|  \__,_|\__\___/|_|   
 					 |___/                                         
 					*/
+					
+					$scope.$watch('cursor', function() {
+						$scope.safeApply(function() {
+							$scope.generator.cursor = $scope.cursor;
+							if (!$scope.generator.cursor) {
+								$scope.generator.cursor = 0;
+							}
+							$scope.generator.render();
+						});
+					});
+					
 					$scope.generator = {
 						instance:	false,
 						cursor:		0,	// data cursor, to vavigate in the data
@@ -103,17 +130,14 @@
 						render:	function() {
 							
 							if (!$scope.generator.instance) {
-								var chart = new window.candlechart($(element).get(0), {
+								$scope.generator.instance = new window.candlechart($(element).get(0), {
 									
 								});
 								
-								chart.candles($scope.candlechart.candles);
-								chart.forecasts($scope.candlechart.forecasts);
+								$scope.generator.instance.candles($scope.candlechart.candles);
+								$scope.generator.instance.forecasts($scope.candlechart.forecasts);
 							}
-							chart.render($scope.generator.cursor);
-							
-							
-							$scope.generator.instance = chart;
+							$scope.generator.instance.render($scope.generator.cursor);
 							
 							
 						}
@@ -125,7 +149,8 @@
 				return {
 					link: 			component,
 					scope:			{
-						candlechart:	'='
+						candlechart:	'=',
+						cursor:			'='
 					}
 				};
 			});
